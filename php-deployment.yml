@@ -19,4 +19,3 @@ spec:
         - "--keygen-exit-on-complete"
         - "--keygen-num-to-gen=10"
       restartPolicy: OnFailure
-
