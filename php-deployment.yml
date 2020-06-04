@@ -19,3 +19,19 @@ spec:
         - "--keygen-exit-on-complete"
         - "--keygen-num-to-gen=10"
       restartPolicy: OnFailure
+---
+# Node Port Service
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: oneshot
+  name: oneshot
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    name: oneshot
+---
