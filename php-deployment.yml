@@ -1,21 +1,16 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: v1
+kind: Service
 metadata:
-  name: oneshot
   labels:
+    app: work-queue
+    component: queue
     chapter: jobs
+  name: queue
 spec:
-  template:
-    metadata:
-      labels:
-        chapter: jobs
-    spec:
-      containers:
-      - name: kuard
-        image: gcr.io/kuar-demo/kuard-amd64:1
-        imagePullPolicy: Always
-        args:
-        - "--keygen-enable"
-        - "--keygen-exit-on-complete"
-        - "--keygen-num-to-gen=10"
-      restartPolicy: OnFailure
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: work-queue
+    component: queue
