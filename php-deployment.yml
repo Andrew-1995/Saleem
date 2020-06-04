@@ -1,25 +1,21 @@
-apiVersion: extensions/v1beta1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: jenkins-deployment
+  name: oneshot
+  labels:
+    chapter: jobs
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: jenkins
   template:
     metadata:
       labels:
-        app: jenkins
+        chapter: jobs
     spec:
       containers:
-      - name: jenkins
-        image: jenkins/jenkins:lts
-        ports:
-        - containerPort: 8080
-volumeMounts:
-          - name: jenkins-home
-            mountPath: /var/jenkins_home
-      volumes:
-        - name: jenkins-home
-          emptyDir: {}
+      - name: kuard
+        image: gcr.io/kuar-demo/kuard-amd64:1
+        imagePullPolicy: Always
+        args:
+        - "--keygen-enable"
+        - "--keygen-exit-on-complete"
+        - "--keygen-num-to-gen=10"
+      restartPolicy: OnFailure
