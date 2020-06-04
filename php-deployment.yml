@@ -1,75 +1,25 @@
-apiVersion: apps/v1
+apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: crbt-php-channel
-  labels:
-    app: php-channel
+  name: jenkins-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: php-channel
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
+      app: jenkins
   template:
     metadata:
       labels:
-        app: php-channel
+        app: jenkins
     spec:
       containers:
-      - name: php-fpm-apache2-oci8
-        image: test1apache
-        imagePullPolicy: IfNotPresent
+      - name: jenkins
+        image: jenkins/jenkins:lts
         ports:
-        - name: http
-          containerPort: 80
-        volumeMounts:
-        - name: channels-codes-channel
-          mountPath: /var/www/html/
-          readOnly: false
-        readinessProbe:
-          httpGet:
-            path: /php
-            port: 80
-          initialDelaySeconds: 3
-          periodSeconds: 3
-      - name: solsson-exporter-apache-channel
-        image: solsson/prometheus-exporter-apache
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: http
-          containerPort: 9117
-      nodeName: crbtworker01
+        - containerPort: 8080
+volumeMounts:
+          - name: jenkins-home
+            mountPath: /var/jenkins_home
       volumes:
-      - name: channels-codes-channel
-        hostPath:
-          path: /mnt/shared/phpcodes/php-channel
-          type: Directory
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: php-channel-service
-spec:
-  # Expose the service on a static port on each node
-  # so that we can access the service from outside the cluster
-  type: NodePort
-
-  # When the node receives a request on the static port (30163)
-  # "select pods with the label 'app' set to 'echo-hostname'"
-  # and forward the request to one of them
-  selector:
-    app: php-channel
-
-  ports:
-    # Three types of ports for a service
-    # nodePort - a static port assigned on each the node
-    # port - port exposed internally in the cluster
-    # targetPort - the container port to send requests to
-    - nodePort: 30193
-      port: 8080
-      targetPort: 80
-
+        - name: jenkins-home
+          emptyDir: {}
