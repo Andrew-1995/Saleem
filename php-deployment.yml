@@ -1,103 +1,76 @@
-apiVersion: "apps/v1" # for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
-kind: StatefulSet
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: cassandra
+  name: crbt-php-channel
   labels:
-     app: cassandra
+    app: php-channel
 spec:
-  serviceName: cassandra
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
-      app: cassandra
+      app: php-channel
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
   template:
     metadata:
       labels:
-        app: cassandra
+        app: php-channel
     spec:
-      terminationGracePeriodSeconds: 1800
       containers:
-      - name: cassandra
-        image: gcr.io/google-samples/cassandra:v14
-        imagePullPolicy: Always
+      - name: php-fpm-apache2-oci8
+        image: test1apache
+        imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 7000
-          name: intra-node
-        - containerPort: 7001
-          name: tls-intra-node
-        - containerPort: 7199
-          name: jmx
-        - containerPort: 9042
-          name: cql
-        resources:
-          limits:
-            cpu: "500m"
-            memory: 1Gi
-          requests:
-           cpu: "500m"
-           memory: 1Gi
-        securityContext:
-          capabilities:
-            add:
-              - IPC_LOCK
-        lifecycle:
-          preStop:
-            exec:
-              command:
-              - /bin/sh
-              - -c
-              - nodetool drain
-        env:
-          - name: MAX_HEAP_SIZE
-            value: 512M
-          - name: HEAP_NEWSIZE
-            value: 100M
-          - name: CASSANDRA_SEEDS
-            value: "cassandra-0.cassandra.default.svc.cluster.local"
-          - name: CASSANDRA_CLUSTER_NAME
-            value: "K8Demo"
-          - name: CASSANDRA_DC
-            value: "DC1-K8Demo"
-          - name: CASSANDRA_RACK
-            value: "Rack1-K8Demo"
-          - name: CASSANDRA_SEED_PROVIDER
-            value: io.k8s.cassandra.KubernetesSeedProvider
-          - name: POD_IP
-            valueFrom:
-              fieldRef:
-                fieldPath: status.podIP
-        readinessProbe:
-          exec:
-            command:
-            - /bin/bash
-            - -c
-            - /ready-probe.sh
-          initialDelaySeconds: 15
-          timeoutSeconds: 5
-        # These volume mounts are persistent. They are like inline claims,
-        # but not exactly because the names need to match exactly one of
-        # the stateful pod volumes.
+        - name: http
+          containerPort: 80
         volumeMounts:
-        - name: cassandra-data
-          mountPath: /var/lib/cassandra
-  # These are converted to volume claims by the controller
-  # and mounted at the paths mentioned above.
-  # do not use these in production until ssd GCEPersistentDisk or other ssd pd
-  volumeClaimTemplates:
-  - metadata:
-      name: cassandra-data
-      annotations:
-        volume.beta.kubernetes.io/storage-class: fast
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 1Gi
+        - name: channels-codes-channel
+          mountPath: /var/www/html/
+          readOnly: false
+        readinessProbe:
+          httpGet:
+            path: /php
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 3
+      - name: solsson-exporter-apache-channel
+        image: solsson/prometheus-exporter-apache
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 9117
+      nodeName: crbtworker01
+      volumes:
+      - name: channels-codes-channel
+        hostPath:
+          path: /mnt/shared/phpcodes/php-channel
+          type: Directory
 ---
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
+
+kind: Service
+apiVersion: v1
 metadata:
-  name: fast
-provisioner: k8s.io/minikube-hostpath
-parameters:
-  type: pd-ssd
+  name: php-channel-service
+spec:
+  # Expose the service on a static port on each node
+  # so that we can access the service from outside the cluster
+  type: NodePort
+
+  # When the node receives a request on the static port (30163)
+  # "select pods with the label 'app' set to 'echo-hostname'"
+  # and forward the request to one of them
+  selector:
+    app: php-channel
+
+  ports:
+    # Three types of ports for a service
+    # nodePort - a static port assigned on each the node
+    # port - port exposed internally in the cluster
+    # targetPort - the container port to send requests to
+    - nodePort: 30193
+      port: 8080
+      targetPort: 80
+---
