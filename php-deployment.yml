@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: crbt-php-channel
-  namespace: test-j
+  
   labels:
     app: php-channel
 spec:
@@ -55,7 +55,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: php-channel-service
-  namespace: test-j
+  
 spec:
   # Expose the service on a static port on each node
   # so that we can access the service from outside the cluster
